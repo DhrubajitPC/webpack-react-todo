@@ -1,0 +1,35 @@
+.main-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex-direction: column;
+  margin-top: 100px;
+}
+
+.input {
+  width: 70%;
+  padding: 8px;
+  border-radius: 2px;
+  border: 1px solid gray;
+  box-shadow: 0 4px 2px -2px beige;
+}
+
+.delete {
+  width: 13px;
+  display: flex;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.todo-item {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  padding: 0 0 5px 0;
+}
+
+.todo-list {
+  width: 70%;
+  padding: 8px;
+  margin-top: 20px;
+}
