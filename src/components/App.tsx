@@ -4,6 +4,7 @@ import InputTodo from "./InputTodo";
 import TodoList from "./TodoList";
 import { Todo } from "./types";
 import Header from "./header.txt";
+import { hot } from "react-hot-loader/root";
 
 const App: FC = () => {
   const [todos, setTodos] = useState<Todo[]>([
@@ -42,4 +43,4 @@ const App: FC = () => {
   }
 };
 
-export default App;
+export default hot(App);

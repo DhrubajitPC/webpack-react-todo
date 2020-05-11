@@ -1,6 +1,7 @@
 const path = require("path");
 const HTMLWebpackPlugin = require("html-webpack-plugin");
 const CustomPlugin = require("./customPlugin");
+const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
 const config = {
   entry: path.join(__dirname, "src/index.tsx"),
@@ -11,18 +12,29 @@ const config = {
   devtool: "source-map",
   resolve: {
     extensions: [".ts", ".tsx", ".js", ".css", ".txt"],
+    alias: {
+      "react-dom": "@hot-loader/react-dom",
+    },
   },
   module: {
     rules: [
       {
-        test: /\.ts(x?)$/,
+        test: /\.(j|t)s(x)?$/,
         exclude: /node_modules/,
-        include: [path.resolve("src")],
-        loader: "ts-loader",
-        options: {
-          transpileOnly: false,
-          compilerOptions: {
-            module: "es2015",
+        use: {
+          loader: "babel-loader",
+          options: {
+            cacheDirectory: true,
+            babelrc: false,
+            presets: [
+              [
+                "@babel/preset-env",
+                { targets: { browsers: "last 2 versions" } }, // or whatever your project requires
+              ],
+              "@babel/preset-typescript",
+              "@babel/preset-react",
+            ],
+            plugins: ["react-hot-loader/babel"],
           },
         },
       },
@@ -33,6 +45,7 @@ const config = {
     ],
   },
   plugins: [
+    new ForkTsCheckerWebpackPlugin(),
     new HTMLWebpackPlugin({
       template: "./index.html",
       inject: true,

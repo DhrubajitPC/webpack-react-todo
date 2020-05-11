@@ -12,7 +12,8 @@
     "jsx": "react",
     "moduleResolution": "node",
     "baseUrl": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "noEmit": true
   },
   "exclude": ["node_modules"]
 }

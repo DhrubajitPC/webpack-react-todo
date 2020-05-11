@@ -1,4 +1,4 @@
-# Demystifying Webpack
+# Demystifying Webpack - breaking down a React-Typescript project configuration
 
 ###### Topics
 
@@ -16,27 +16,27 @@
 
 - dev and prod build
 
-The Javascript ecosystem has become so huge nowadays that when developers come on board, they have to learn and master a lot tools other than the core language itself. It can be quite overwhelming resulting in *javascript fatigue*. One of these tools that is ubiquitous but difficult to wrap one's head around is webpack. I am writing this post with the hope to simplify the learning process for everyone as well as solidifying my own understanding. 
+The Javascript ecosystem has become so huge nowadays that when developers come on board, they have to learn and master a lot tools other than the core language itself. It can be quite overwhelming resulting in _javascript fatigue_. One of these tools that is ubiquitous but difficult to wrap one's head around is webpack. I am writing this post with the hope to simplify the learning process for everyone.
 
 Webpack is a bundler that bundles our javascript files to be served over the network. But why do we need a bundler. Why not just use script tags like the old days?
 
 ```html
 <body>
-    <!--
+  <!--
         some block of code
     -->
-    <script src="lib.js"></script>
-    <script src="index.js"></script>
+  <script src="lib.js"></script>
+  <script src="index.js"></script>
 </body>
 ```
 
-The problem is that in our projects nowadays, we may have a lot of javascript files (maybe even a hundred) across different folders which may depend on each other and it becomes very difficult to manage all of them. 
+The problem is that in our projects nowadays, we may have a lot of javascript files (maybe even a hundred) across different folders which may depend on each other and it becomes very difficult to manage all of them.
 
-Modern browsers now support esmodules and we may rely on them to handle the dependency problems, but there is still a lot of features that are missing. Webpack allows us to manage this dependency and much more in a nice way. It also provides us the capacity to add tons of customization suited to our needs. 
+Modern browsers now support esmodules and we may rely on them to handle the dependency problems, but there is still a lot of features that are missing. Webpack allows us to manage this dependency and much more in a nice way. It also provides us the capacity to add tons of customization suited to our needs.
 
-For this post, I will build a very basic todo application using React and Typescript and bundle it using webpack. In the process, I will walk you through the different parts of webpack and how we can come up with a webpack config that we can use in production.  You can find the source code here.
+For this post, I will build a very basic todo application using React and Typescript and bundle it using webpack. In the process, I will walk you through the different parts of webpack and how we can come up with a webpack config that we can use in production. You can find the source code here.
 
-Let's get started. 
+Let's get started.
 
 ---
 
@@ -44,379 +44,13 @@ Create a folder and within it run the following commands
 
 ```bash
 npm init -y
-npm i --save-dev webpack webpack-cli webpack-dev-server typescript ts-loader html-webpack-plugin @types/react @types/react-dom 
+npm i --save-dev webpack webpack-cli webpack-dev-server typescript ts-loader html-webpack-plugin @types/react @types/react-dom
 npm i --save react react-dom
 ```
 
 We need `webpack` to create the bundle. The `webpack-cli` is a tool that allows us to run webpack using the cli and the `webpack-dev-server` will be our server that will serve our application. We will need `typescript` to transpile our typescript code and we will need `ts-loader` to let webpack know how to bundle typescript files. We install `react` and `react-dom` because we need them to create a react application and we also install `@types/react` and `@types/react-dom` to support type inferencing in our react app. The `html-webpack-plugin` is a webpack plugin that uses the webpack engine to generate html files for us.
 
-With our installation complete, let's add some code
-
-```css
-/* src/components/styles.css */
-.main-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  flex-direction: column;
-  margin-top: 100px;
-}
-
-.input {
-  width: 70%;
-  padding: 8px;
-  border-radius: 2px;
-  border: 1px solid gray;
-  box-shadow: 0 4px 2px -2px beige;
-}
-
-.delete {
-  width: 13px;
-  display: flex;
-  cursor: pointer;
-  margin-left: auto;
-}
-
-.todo-item {
-  width: 100%;
-  display: flex;
-  justify-content: flex-start;
-  padding: 0 0 5px 0;
-}
-
-.todo-list {
-  width: 70%;
-  padding: 8px;
-  margin-top: 20px;
-}
-```
-
-```tsx
-// src/components/types.ts
-export type Todo = {
-  id: number;
-  todo: string;
-  isChecked: boolean;
-};
-```
-
-```tsx
-// src/components/TodoList.tsx
-import React, { FC } from "react";
-import "./styles";
-import TodoItem from "./TodoItem";
-import { Todo } from "./types";
-
-type Props = {
-  updateTodos: (newTodos: Todo[]) => void;
-  todos: Todo[];
-};
-
-const TodoList: FC<Props> = ({ todos, updateTodos }) => {
-  return (
-    <div className="todo-list">
-      {todos.map(({ id, isChecked, todo }) => (
-        <TodoItem
-          id={id}
-          key={id}
-          isChecked={isChecked}
-          todo={todo}
-          handleCheck={(id, isChecked) => {
-            const todoIndex = todos.findIndex((todo) => todo.id === id);
-            const todo = { ...todos[todoIndex] } as Todo;
-            todo.isChecked = isChecked;
-            const newTodos = [...todos];
-            newTodos[todoIndex] = todo;
-            updateTodos(newTodos);
-          }}
-          handleDelete={(id) => {
-            const newTodos = todos.filter((todo) => todo.id != id);
-            updateTodos(newTodos);
-          }}
-        />
-      ))}
-    </div>
-  );
-};
-
-export default TodoList;
-```
-
-```tsx
-// src/components/TodoItem.tsx
-import React, { FC } from "react";
-import "./styles";
-
-type Props = {
-  id: number;
-  todo: string;
-  isChecked: boolean;
-  handleCheck: (id: number, isChecked: boolean) => void;
-  handleDelete: (id: number) => void;
-};
-
-const TodoItem: FC<Props> = ({
-  todo,
-  isChecked,
-  id,
-  handleDelete,
-  handleCheck,
-}) => {
-  return (
-    <div className="todo-item">
-      <input
-        type="checkbox"
-        id={id.toString()}
-        checked={isChecked}
-        onChange={() => handleCheck(id, !isChecked)}
-      />
-      <label
-        htmlFor={id.toString()}
-        style={{ textDecoration: isChecked ? "line-through" : "none" }}
-      >
-        {todo}
-      </label>
-      <span className="delete" onClick={() => handleDelete(id)}>
-        <svg width="100%" viewBox="0 0 20 20" version="1.1">
-          <line
-            x1="10%"
-            x2="90%"
-            y1="10%"
-            y2="90%"
-            stroke="black"
-            strokeWidth="3"
-          />
-          <line
-            x1="10%"
-            x2="90%"
-            y1="90%"
-            y2="10%"
-            stroke="black"
-            strokeWidth="3"
-          />
-        </svg>
-      </span>
-    </div>
-  );
-};
-
-export default TodoItem;
-```
-
-```tsx
-// src/components/InputTodo.tsx
-import React, { FC, KeyboardEvent, useRef } from "react";
-import "./styles";
-
-type Props = {
-  onAddTodo: (todo: string) => void;
-};
-
-const InputTodo: FC<Props> = ({ onAddTodo }) => {
-  const inputRef = useRef<HTMLInputElement>({} as HTMLInputElement);
-
-  return (
-    <input
-      className="input"
-      ref={inputRef}
-      placeholder="Add Todo"
-      onKeyDown={(event: KeyboardEvent) => {
-        if (event.keyCode == 13) {
-          const todo = inputRef.current.value;
-          if (todo) {
-            onAddTodo(todo);
-            inputRef.current.value = "";
-          }
-        }
-      }}
-    />
-  );
-};
-
-export default InputTodo;
-```
-
-```tsx
-// src/components/App.tsx
-import React, { useState, FC } from "react";
-import "./styles";
-import InputTodo from "./InputTodo";
-import TodoList from "./TodoList";
-import { Todo } from "./types";
-
-const App: FC = () => {
-  const [todos, setTodos] = useState<Todo[]>([
-    {
-      id: 1,
-      isChecked: false,
-      todo: "Item 1",
-    },
-    {
-      id: 2,
-      isChecked: true,
-      todo: "Item 2",
-    },
-  ]);
-
-  return (
-    <div className="main-container">
-      <h2>Simple Todo</h2>
-      <InputTodo onAddTodo={handleNewTodo} />
-      <TodoList
-        todos={todos}
-        updateTodos={(newTodos: Todo[]) => setTodos(newTodos)}
-      />
-    </div>
-  );
-
-  function handleNewTodo(todo: string) {
-    setTodos([
-      ...todos,
-      {
-        id: todos.length > 0 ? todos[todos.length - 1].id + 1 : 1,
-        isChecked: false,
-        todo,
-      },
-    ]);
-  }
-};
-
-export default App;
-```
-
-```tsx
-// src/index.tsx
-import React from "react";
-import ReactDOM from "react-dom";
-import App from "./components/App";
-
-const root = document.getElementById("root");
-ReactDOM.render(<App />, root);
-```
-
-```json
-// tsconfig.json
-{
- "compilerOptions": {
- "sourceMap": true,
- "lib": ["es2019", "dom"],
- "removeComments": true,
- "strict": true,
- "strictNullChecks": true,
- "allowSyntheticDefaultImports": true,
- "noImplicitAny": true,
- "module": "esnext",
- "target": "es6",
- "jsx": "react",
- "moduleResolution": "node",
- "baseUrl": "src",
- "outDir": "dist",
- "esModuleInterop": true
- },
- "exclude": ["node_modules"]
-}
-```
-
-```html
-<!-- index.html -->
-
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
-```
-
-```json
-// webpack.config.js
-const path = require("path");
-const HTMLWebpackPlugin = require("html-webpack-plugin");
-
-const config = {
-  entry: path.join(__dirname, "src/index.tsx"),
-  output: {
-    path: path.resolve(__dirname, "dist"),
-    filename: "bundle.js",
-  },
-  mode: "development",
-  devtool: "source-map",
-  resolve: {
-    extensions: [".ts", ".tsx", ".js"],
-  },
-  module: {
-    rules: [
-      {
-        test: /\.ts(x?)$/,
-        exclude: /node_modules/,
-        include: [path.resolve("src")],
-        loader: "ts-loader",
-        options: {
-          transpileOnly: true,
-          compilerOptions: {
-            module: "es2015",
-          },
-        },
-      },
-    ],
-  },
-  plugins: [
-    new HTMLWebpackPlugin({
-      template: "./index.html",
-      inject: true,
-      filename: "./index.html",
-      minify: {
-        minifyCSS: true,
-        minifyJS: true,
-        removeComments: true,
-        useShortDoctype: true,
-        collapseWhitespace: true,
-        collapseInlineTagWhitespace: true,
-      },
-    }),
-  ],
-};
-
-module.exports = config;
-```
-
-```json
-// package.json
-{
-  "name": "webpack-react",
-  "version": "1.0.0",
-  "description": "",
-  "main": "src/index.tsx",
-  "scripts": {
-    "start": "webpack-dev-server --open --mode development",
-    "build": "webpack --mode production"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "@types/react": "^16.9.34",
-    "@types/react-dom": "^16.9.6",
-    "html-webpack-plugin": "^4.2.0",
-    "ts-loader": "^6.2.2",
-    "typescript": "^3.8.3",
-    "webpack": "^4.42.1",
-    "webpack-cli": "^3.3.11",
-    "webpack-dev-server": "^3.10.3"
-  },
-  "dependencies": {
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1"
-  }
-}
-```
-
-Our folder structure should look like this now
+With our installation complete, we can add the code from the repo. Our folder structure looks like this.
 
 ```
 node_modules
@@ -436,21 +70,21 @@ tsconfig.json
 webpack.config.json
 ```
 
-With these files in, we can test out our config. From the terminal run `npm start`. It should spin up a server and open our simple todo react app in the browser.
+With these files in, we can test out our config. From the terminal run `npm start`. It will spin up a server. Open our simple todo react app in the browser by going to `http://localhost:8080`.
 
 The `webpack.config.js` file looks quite intimidating. So let's understand what's going on.
 
 ###### Entry:
 
-This gives webpack the starting file from which to build the dependency graph. It is possible to have multiple entry points. 
+This gives webpack the starting file from which to build the dependency graph. It is possible to have multiple entry points.
 
 ```js
 module.exports = {
   entry: {
-    pageOne: './src/pageOne/index.js',
-    pageTwo: './src/pageTwo/index.js',
-    pageThree: './src/pageThree/index.js'
-  }
+    pageOne: "./src/pageOne/index.js",
+    pageTwo: "./src/pageTwo/index.js",
+    pageThree: "./src/pageThree/index.js",
+  },
 };
 ```
 
@@ -458,11 +92,11 @@ In the above example, this creates 3 separate dependency graphs. Sometimes, this
 
 ###### Output:
 
-This is the folder in which all webpack files are bundled into. 
+This is the folder in which all webpack files are bundled into.
 
 ```js
 {
-    output: "dist"
+  output: "dist";
 }
 ```
 
@@ -471,18 +105,20 @@ This is the folder in which all webpack files are bundled into.
 Resolvers in webpack allow us to import files without including the file extension. For example it is possible to
 
 ```js
-import "./index"
+import "./index";
 ```
 
 instead of:
 
 ```js
-import "./index.js"
+import "./index.js";
 ```
+
+It also supports non relative relative paths usage in import statement using the `alias` key.
 
 ###### Devtool
 
-The devtool property allows us to include the source map of our code so that we can inspect our code in the browser. 
+The devtool property allows us to include the source map of our code so that we can inspect our code in the browser.
 
 ```js
 //webpack.config.js
@@ -522,7 +158,7 @@ module: {
 },
 ```
 
-We are using three different loaders here. All our loaders go under the `module `property under `rules` section. The `rules` section is a set of rules that gets applied to every file before webpack builds the dependency graph. As to what the rule does, it depends on the loader that's assigned to the rule. We have two different rules. Webpack knows which rules to apply by checking in with the `test` property. All our .ts files are applied the first rule. The `ts-loader` converts all our typescript files into javascript that webpack can understand. Every loader can have its own set of custom configuration so I urge you to look into the documentation for them. 
+We are using three different loaders here. All our loaders go under the `module`property under `rules` section. The `rules` section is a set of rules that gets applied to every file before webpack builds the dependency graph. As to what the rule does, it depends on the loader that's assigned to the rule. We have two different rules. Webpack knows which rules to apply by checking in with the `test` property. All our .ts files are applied the first rule. The `ts-loader` converts all our typescript files into javascript that webpack can understand. Every loader can have its own set of custom configuration so I urge you to look into the documentation for them.
 
 So what are loaders? They are basic functions that take in a file and output a javascript string. Let's write a very basic loader. We are going to read a `.txt` file and the content will be used as a header for our app instead of `Simple Todo`. It's a lazy contrived example so I apologize for it. Anyways, first we update our webpack config.
 
@@ -533,7 +169,7 @@ resolve: {
 
 module: {
   rules: [
-    // .... 
+    // ....
     {
       test: /\.txt$/i,
       loader: path.resolve(__dirname, "customLoader.js")
@@ -547,9 +183,7 @@ We add the .txt extension to our reolvers and add a new rule set which converts 
 ```js
 // customLoader.js
 module.exports = function (source) {
-
   return `module.exports = '${source}'`;
-
 };
 ```
 
@@ -563,7 +197,7 @@ Change our app code:
 
 ```tsx
 // src/components/App.tsx
-import Header from "./header.txt"  // note the '.txt' extension here. We need this because of typescript module resolution
+import Header from "./header.txt"; // note the '.txt' extension here. We need this because of typescript module resolution
 
 // other block of code
 
@@ -571,10 +205,10 @@ import Header from "./header.txt"  // note the '.txt' extension here. We need th
   <h2>{Header}</h2>
   <InputTodo onAddTodo={handleNewTodo} />
   <TodoList
-  todos={todos}
-  updateTodos={(newTodos: Todo[]) => setTodos(newTodos)}
+    todos={todos}
+    updateTodos={(newTodos: Todo[]) => setTodos(newTodos)}
   />
-</div>
+</div>;
 ```
 
 Because we are using typescript, we need to tell how to resolve a text file. We need to define the text file as a module for typescript to compile.
@@ -588,13 +222,13 @@ declare module "*.txt" {
 }
 ```
 
-We are done. We can see that webpack uses our custom loader to read from the `header.txt` file inject the data into our react component. 
+We are done. We can see that webpack uses our custom loader to read from the `header.txt` file inject the data into our react component.
 
 Now let us take a look at how we parse our css files. We are using two different loaders here. We compose them using the `use` property. Loaders are applied from right to left. In this case, the `css-loader` is applied before the `style-loader`. One way to remember is by looking at it as just function compositions `style-loader(css-loader(content))`. The css-loader transforms our css to in-memory javascript and the style-loader injects that code into our source.
 
 ###### Plugins:
 
-Plugins allow for more fine grained control. Plugins allow us to `hook` into the webpack compilation process and run our own code to modify or add features as needed. A plugin can be used multiple times in the configuration so every plugin needs a `new` instance of itself declared during the initialization phase. 
+Plugins allow for more fine grained control. Plugins allow us to `hook` into the webpack compilation process and run our own code to modify or add features as needed. A plugin can be used multiple times in the configuration so every plugin needs a `new` instance of itself declared during the initialization phase.
 
 For our example we are using the `html-webpack-plugin`. This plugin generates an html file and injects our genereated bundle into it.
 
@@ -602,7 +236,7 @@ For our example we are using the `html-webpack-plugin`. This plugin generates an
 plugins: [
  new HTMLWebpackPlugin({
    template: "./index.html",
-   inject: true,  
+   inject: true,
    filename: "./index.html",
    minify: {
      minifyCSS: true,
@@ -616,7 +250,7 @@ plugins: [
 ],
 ```
 
-We are currently generating our css as inline styles. This means that if our webpage loads with static content, it needs to finish parsing the js before it can add the styles. Let's separate it out using the `mini-css-extract-plugin`. 
+We are currently generating our css as inline styles. This means that if our webpage loads with static content, it needs to finish parsing the js before it can add the styles. Let's separate it out using the `mini-css-extract-plugin`.
 
 ```bash
 npm install --save-dev mini-css-extract-plugin
@@ -654,7 +288,7 @@ Now let's build our application and look into the `dist` folder. We can see that
 
 Take note that we removed our `style-loader` from our loaders since we are not injecting the css into our source code anymore.
 
-Let us create a trivial plugin. 
+Let us create a trivial plugin.
 
 ```js
 // customPlugin.js
@@ -662,7 +296,6 @@ class CustomPlugin {
   apply(compiler) {
     compiler.hooks.run.tap("CustomPlugin", (compilation) => {
       console.log("message from custom plugin");
-
     });
   }
 }
@@ -819,9 +452,9 @@ We have split up our configs now. We use the style loader to inject inline style
 
 ###### Code Splitting
 
-Browsers will cache static resources like images, css and js bundles to speed up page load without fetching those files a second time from the server. This often results in bugs where we ask users to clear the cache. We can prevent this by using `[contenthash]` in our bundle output file names. Webpack will automatically replace `[contenthash]` with the hash of the content of the file. So whenever we deploy, the browser will fetch the new js. But if we make only minor changes to our codebase, our single generated bundle will be different and the entire bundle will be downloaded again removing some of the advantages of caching. 
+Browsers will cache static resources like images, css and js bundles to speed up page load without fetching those files a second time from the server. This often results in bugs where we ask users to clear the cache. We can prevent this by using `[contenthash]` in our bundle output file names. Webpack will automatically replace `[contenthash]` with the hash of the content of the file. So whenever we deploy, the browser will fetch the new js. But if we make only minor changes to our codebase, our single generated bundle will be different and the entire bundle will be downloaded again removing some of the advantages of caching.
 
-The workaround would be to split our javascript bundle into many small bundles so that only the changed bundles gets reloaded. For that we use the  `SplitChunksPlugin` that ships with webpack.  This plugin is not configured in the `plugin` section of the config like all other plugins, but it has its own key called `optimization`.
+The workaround would be to split our javascript bundle into many small bundles so that only the changed bundles gets reloaded. For that we use the `SplitChunksPlugin` that ships with webpack. This plugin is not configured in the `plugin` section of the config like all other plugins, but it has its own key called `optimization`.
 
 ###### Tree Shaking
 
@@ -829,18 +462,18 @@ Tree shaking means removing code that is not used in our codebase. For example, 
 
 ```tsx
 // these won't tree shake
-var reactRedux = require('react-redux');
+var reactRedux = require("react-redux");
 var connect = reactRedux.connect;
-import reacRedux from 'react-redux';
+import reacRedux from "react-redux";
 var connect = reactRedux.connect;
 
 // the correct way
-import { connect } from 'react-redux'
+import { connect } from "react-redux";
 ```
 
 ###### Small Bundle Size
 
-The smaller the bundle size, the faster our clients can download our code over the network. When we run webpack in production code, it already uses the `TerserPlugin` by default to minimize our code. This means that, our original code gets replaced to a much more compact form. Take a look at the generated bundles to see what the output looks like. 
+The smaller the bundle size, the faster our clients can download our code over the network. When we run webpack in production code, it already uses the `TerserPlugin` by default to minimize our code. This means that, our original code gets replaced to a much more compact form. Take a look at the generated bundles to see what the output looks like.
 
 With the theory out of the way, let's update our `webpack.prod.js` files.
 
@@ -870,8 +503,7 @@ const config = {
       filename: "[name].[contenthash].css",
       chunkFilename: "[id].[contenthash].css",
     }),
-    new CleanWebpackPlugin(), // A webpack plugin to remove/clean our dist folder 
-
+    new CleanWebpackPlugin(), // A webpack plugin to remove/clean our dist folder
   ],
   // add this optimization block to enable code splitting
 
@@ -889,10 +521,111 @@ With this we have a decent webpack configuration for production. This can be mad
 
 ###### Hot Module Replacement (HMR)
 
-Hot Module Replacement is an extremely useful and powerful feature of webpack. It allows us to update our code and see the changes reflected without having the need for a full refresh. However, setting it up differs across different frameworks. Refer to the [docs](https://webpack.js.org/guides/hot-module-replacement/) for more info. For react, you would need to integrate [`react-hot-loader`](https://github.com/gaearon/react-hot-loade) plugin. I will be skipping the setup, because it requires setting up `babel` as well. If you are interested, you can look at the [config](https://github.com/gaearon/react-hot-loader#typescript) here.
+Hot Module Replacement is an extremely useful and powerful feature of webpack. It allows us to update our code and see the changes reflected without having the need for a full refresh. However, setting it up differs across different frameworks. Refer to the [docs](https://webpack.js.org/guides/hot-module-replacement/) for more info. For react, you would need to integrate [`react-hot-loader`](https://github.com/gaearon/react-hot-loade) plugin.
+
+Since our application is build with typescript, we will need to set up `babel` as well for our 'hmr' to work. `Babel` is a transpiler that transpiles javascript/typescript code. Since we will now use babel to transpile our typescript code, we can remove `ts-loader` .
+
+```bash
+npm uninstall ts-loader
+```
+
+Even though babel does the transpiling, it does not do the typechecking. For that we would need another plugin `fork-ts-checker-webpack-plugin`. Let's add our dependencies
+
+```bash
+npm i --save-dev @babel/core @babel/preset-end @babel/preset-react @babel/preset-typescript @babel-loader fork-ts-checker-webpack-plugin
+
+npm i --save react-hot-loader @hot-loader/react-dom
+```
+
+with our dependencies in, let's update our webpack config
+
+```js
+// webpack.base.js
+const path = require("path");
+const HTMLWebpackPlugin = require("html-webpack-plugin");
+const CustomPlugin = require("./customPlugin");
+const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin"); // add this plugin
+
+const config = {
+  entry: path.join(__dirname, "src/index.tsx"),
+  output: {
+    path: path.resolve(__dirname, "dist"),
+    filename: "bundle.js",
+  },
+  devtool: "source-map",
+  resolve: {
+    extensions: [".ts", ".tsx", ".js", ".css", ".txt"],
+    alias: {
+      "react-dom": "@hot-loader/react-dom", // add a global alias to use @hot-loader/react-dom instead of react-dom
+    },
+  },
+  module: {
+    rules: [
+      {
+        test: /\.(j|t)s(x)?$/,
+        exclude: /node_modules/,
+        use: {
+          loader: "babel-loader", //use babel
+
+          options: {
+            cacheDirectory: true,
+            babelrc: false,
+            presets: [
+              [
+                "@babel/preset-env",
+                { targets: { browsers: "last 2 versions" } }, // or whatever your project requires
+              ],
+              "@babel/preset-typescript",
+              "@babel/preset-react",
+            ],
+            plugins: ["react-hot-loader/babel"],
+          },
+        },
+      },
+      {
+        test: /\.(txt)$/i,
+        loader: path.resolve(__dirname, "customLoader.js"),
+      },
+    ],
+  },
+  plugins: [
+    new ForkTsCheckerWebpackPlugin(), // typechecks ts files
+
+    new HTMLWebpackPlugin({
+      template: "./index.html",
+      inject: true,
+      filename: "./index.html",
+      minify: {
+        minifyCSS: true,
+        minifyJS: true,
+        removeComments: true,
+        useShortDoctype: true,
+        collapseWhitespace: true,
+        collapseInlineTagWhitespace: true,
+      },
+    }),
+    new CustomPlugin(),
+  ],
+};
+
+module.exports = config;
+```
+
+Now we need to update our `App.tsx`
+
+```tsx
+// src/components/App.tsx
+
+...
+import { hot } from "react-hot-loader/root";
+
+...
+...
+export default hot(App);
+```
+
+That's all we need to do. Now try making any change to the site and see it reflected in the browser without needing to refresh.
 
 ---
 
-And that's it! There were quite a lot of different things to look at but I hope this post eases your learning curve for webpack. :)
-
-
+And that's it! There were quite a lot of different things to look at but I hope this post eases your learning curve towards your journey to master webpack. :)
